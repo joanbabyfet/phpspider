@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use QL\QueryList;
 
 class serv_util
 {
@@ -996,7 +997,7 @@ class serv_util
     }
 
     /**
-     * Guzzle get请求提交
+     * Guzzle get请求提交, 可执行异步和并发请求
      * @param $parameter
      * @param $url
      * @return bool|string
@@ -1022,7 +1023,7 @@ class serv_util
     }
 
     /**
-     * Guzzle表单POST请求提交
+     * Guzzle表单POST请求提交, , 可执行异步和并发请求
      * @param $parameter
      * @param $url
      * @return bool|string
@@ -1268,5 +1269,36 @@ class serv_util
     {
         $exchange_code = $this->random('numeric', $num);
         return $exchange_code;
+    }
+
+    /**
+     * 采集数据
+     * @param array $data
+     * @return mixed
+     */
+    public function collect(array $data)
+    {
+        //参数过滤
+        $data_filter = data_filter([
+            'url'       => 'required',
+            'rules'     => 'required',
+            'range'     => '',
+        ], $data);
+
+        //php发送http请求, 获取该页面html源码
+        //$html = file_get_contents($data_filter['url']); //file_get_contents可获取本地文件或送http请求
+
+        //使用GuzzleHttp库, 优点可定制化
+        $client = new \GuzzleHttp\Client();
+        $response = $client->request('GET', $data_filter['url'], [
+            //'proxy' => 'http://localhost:8125' //通过某台代理服务器
+        ]);
+        $body = $response->getBody();
+        $html = (string)$body;
+
+        $res = QueryList::Query($html, $data_filter['rules'], $data_filter['range'])->getData(function($item){
+            return $item;
+        });
+        return $res;
     }
 }

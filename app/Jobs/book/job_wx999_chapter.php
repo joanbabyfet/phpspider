@@ -73,11 +73,12 @@ class job_wx999_chapter implements ShouldQueue
             //更新文章详情与缩略图
             if(empty($this->book['introduce']) || empty($this->book['thumb']) )
             {
-                //获取该页面html源码
-                $html = file_get_contents($this->book['from_url']);
-                $info = QueryList::Query($html , $detail_rules['rules'], '')->getData(function($item){
-                    return $item;
-                });
+                //采集数据
+                $info = $serv_util->collect([
+                    'url'   => $this->book['from_url'],
+                    'rules' => $detail_rules['rules'],
+                    'range' => '',
+                ]);
 
                 $update_data = [];
                 if(empty($this->book['introduce']) && !empty($info[0]['introduce'])){
@@ -100,10 +101,11 @@ class job_wx999_chapter implements ShouldQueue
             }
 
             //获取章节列表
-            $html = file_get_contents($this->book['from_url']);
-            $zhangjie_lists = QueryList::Query($html , $zhangjie_list_rules['rules'] , $zhangjie_list_rules['range'])->getData(function($item){
-                return $item;
-            });
+            $zhangjie_lists = $serv_util->collect([
+                'url'   => $this->book['from_url'],
+                'rules' => $zhangjie_list_rules['rules'],
+                'range' => $zhangjie_list_rules['range'],
+            ]);
 
             if(count($zhangjie_lists))
             {

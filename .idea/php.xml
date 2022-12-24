@@ -144,9 +144,9 @@
       <path value="$PROJECT_DIR$/vendor/jaeger/http" />
       <path value="$PROJECT_DIR$/vendor/jaeger/curlmulti" />
       <path value="$PROJECT_DIR$/vendor/jaeger/querylist-ext-multi" />
-      <path value="$PROJECT_DIR$/vendor/jaeger/querylist-ext-login" />
       <path value="$PROJECT_DIR$/vendor/jaeger/querylist-ext-aquery" />
       <path value="$PROJECT_DIR$/vendor/jaeger/querylist" />
+      <path value="$PROJECT_DIR$/vendor/jaeger/querylist-ext-login" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="7.3" />

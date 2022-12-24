@@ -6,6 +6,7 @@ use App\lib\response;
 use App\Models\mod_book_detail;
 use App\repositories\repo_book_content;
 use App\repositories\repo_book_detail;
+use App\services\serv_util;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -46,17 +47,19 @@ class job_wx999_content implements ShouldQueue
      */
     public function handle(
         repo_book_detail $repo_book_detail,
-        repo_book_content $repo_book_content
+        repo_book_content $repo_book_content,
+        serv_util $serv_util
     )
     {
         $config_book            = config('book.'.$this->source);
         $zhangjie_detail_rules  = $config_book['zhangjie_detail']; //章节详情页配置
 
-        //获取该页面html源码
-        $html = file_get_contents($this->info['from_url']);
-        $res = QueryList::Query($html, $zhangjie_detail_rules['rules'], $zhangjie_detail_rules['range'])->getData(function($item){
-            return $item;
-        });
+        //采集数据
+        $res = $serv_util->collect([
+            'url'   => $this->info['from_url'],
+            'rules' => $zhangjie_detail_rules['rules'],
+            'range' => $zhangjie_detail_rules['range'],
+        ]);
         $res = array_shift($res); //将第1个数组元素弹出
         $content = empty($res) ? '' : $res['content'];
 

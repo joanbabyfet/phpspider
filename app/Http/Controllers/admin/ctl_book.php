@@ -10,6 +10,7 @@ use App\repositories\repo_book_content;
 use App\repositories\repo_book_detail;
 use App\repositories\repo_category;
 use App\services\serv_array;
+use App\services\serv_util;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use QL\QueryList;
@@ -21,13 +22,15 @@ class ctl_book extends Controller
     private $repo_book_detail;
     private $repo_book_content;
     private $serv_array;
+    private $serv_util;
 
     public function __construct(
         repo_category $repo_category,
         repo_book $repo_book,
         repo_book_detail $repo_book_detail,
         repo_book_content $repo_book_content,
-        serv_array $serv_array
+        serv_array $serv_array,
+        serv_util $serv_util
     )
     {
         parent::__construct();
@@ -36,6 +39,7 @@ class ctl_book extends Controller
         $this->repo_book_detail = $repo_book_detail;
         $this->repo_book_content = $repo_book_content;
         $this->serv_array       = $serv_array;
+        $this->serv_util        = $serv_util;
     }
 
     /**
@@ -198,8 +202,6 @@ class ctl_book extends Controller
         $number             = $number < 1 ? 10 : $number; //小说数量
         $zhangjie_number    = $request->input('zhangjie_number', 0); //章节数量
         $zhangjie_number    = $zhangjie_number < 1 ? 50 : $zhangjie_number;
-        $config_book        = config('book.wx999'); //获取采集配置
-        $zhangjie_detail_rules  = $config_book['zhangjie_detail']; //列表页配置
 
         if($type == 1) { //指定分类
             $conds = [
@@ -233,19 +235,30 @@ class ctl_book extends Controller
                 'order_by'  => ['zhangjie_id', 'asc'],
             ];
             $rows = $this->repo_book_content->get_list($conds);
-            $ids = sql_in($rows, 'zhangjie_id');
+            $zhangjie_ids = sql_in($rows, 'zhangjie_id');
 
             //获取小说章节列表
-            $zhangjie_list = $this->repo_book_detail->get_list(['id'  => $ids]);
+            $zhangjie_list = $this->repo_book_detail->get_list(['id'  => $zhangjie_ids]);
+            $book_ids = sql_in($zhangjie_list, 'pid');
+
+            //获取小说来源 source
+            $books = $this->repo_book->get_list(['id'  => $book_ids]);
+            $book_source = one_array($books, ['id', 'source']);
+
             $success_zhangjie_count = 0; //成功章节内容入库条数
             foreach ($zhangjie_list as $v)
             {
-                //获取该页面html源码
-                $html = file_get_contents($v['from_url']);
-                $res = QueryList::Query($html, $zhangjie_detail_rules['rules'], $zhangjie_detail_rules['range'])->getData(function($item){
-                    return $item;
-                });
+                $config_book            = config('book.'.$book_source[$v['pid']]); //根据小说id获取采集配置
+                $zhangjie_detail_rules  = $config_book['zhangjie_detail']; //列表页配置
+
+                //采集数据
+                $res = $this->serv_util->collect([
+                    'url'   => $v['from_url'],
+                    'rules' => $zhangjie_detail_rules['rules'],
+                    'range' => $zhangjie_detail_rules['range'],
+                ]);
                 $res = array_shift($res); //将第1个数组元素弹出
+
                 if(!empty($res['content']))
                 {
                     //更新章节内容
@@ -328,11 +341,12 @@ class ctl_book extends Controller
             for ($page = 1; $page <= $total_page; $page++)
             {
                 $url = $base_url.sprintf($list_rules['page_url'], $collect_cat, $page); //组装第几页地址
-                //获取该页面html源码
-                $html = file_get_contents($url);
-                $res = QueryList::Query($html, $list_rules['rules'], $list_rules['range'])->getData(function($item){
-                    return $item;
-                });
+                //采集数据
+                $res = $this->serv_util->collect([
+                    'url'   => $url,
+                    'rules' => $list_rules['rules'],
+                    'range' => $list_rules['range'],
+                ]);
 
                 //过滤标题与链接为空的无效数据
                 $result = array_filter($res, function($v) {
