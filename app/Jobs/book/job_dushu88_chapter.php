@@ -2,7 +2,6 @@
 
 namespace App\Jobs\book;
 
-use App\lib\response;
 use App\repositories\repo_book;
 use App\repositories\repo_book_detail;
 use App\services\serv_util;
@@ -12,16 +11,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use QL\QueryList;
 
 /**
  * 1.将远程图片下载至本地
  * 2.更新小说信息, 包含简介/缩图
  * 3.推送任务到队列(采集每章节内容), 1个章节1个任务
- * Class job_wx999_chapter
+ * Class job_dushu88_chapter
  * @package App\Jobs\book
  */
-class job_wx999_chapter implements ShouldQueue
+class job_dushu88_chapter implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

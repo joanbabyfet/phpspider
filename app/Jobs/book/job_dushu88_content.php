@@ -2,7 +2,6 @@
 
 namespace App\Jobs\book;
 
-use App\lib\response;
 use App\Models\mod_book_detail;
 use App\repositories\repo_book_content;
 use App\repositories\repo_book_detail;
@@ -14,15 +13,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use QL\QueryList;
 
-/**
- * 1.添加小说章节
- * 2.保存章节内容到txt
- * Class job_wx999_content
- * @package App\Jobs\book
- */
-class job_wx999_content implements ShouldQueue
+class job_dushu88_content implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

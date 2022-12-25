@@ -83,7 +83,7 @@ class repo_book
             'author'        => '',
             'word_count'    => '',
             'level'         => '',
-            'source'        => '',
+            'source'        => $do == 'edit' ? '' : 'required', //根据来源获取所属配置
             'from_url'      => '',
             'from_hash'     => '',
         ], $data);

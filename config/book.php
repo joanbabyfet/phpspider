@@ -3,11 +3,11 @@
 return [
     'source'    => [
         'wx999'     => [
-            'name'      => '999文学',
+            'name'      => '999小说',
             'status'    => 1
         ],
         'dushu88'   => [
-            'name'      => '888读书',
+            'name'      => '88读书',
             'status'    => 1
         ],
     ]

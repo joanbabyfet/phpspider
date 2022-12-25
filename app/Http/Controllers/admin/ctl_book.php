@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\book\job_dushu88_chapter;
 use App\Jobs\book\job_wx999_chapter;
 use App\Models\mod_book;
 use App\repositories\repo_book;
@@ -302,7 +303,7 @@ class ctl_book extends Controller
     }
 
     /**
-     * 999小说源
+     * 999小说, 每个网站采集规则不可, 独立事件
      * 1.读取待采集栏目页面所有指定链接
      * 2.对链接进行补全，得到完整链接
      * 3.将该链接放入数据库中查询,判断是否存在记录
@@ -403,8 +404,120 @@ class ctl_book extends Controller
                     }
 
                     //推送任务到队列, 1个小说1个任务
-                    $job = new job_wx999_chapter($v, $zhangjie_number, __FUNCTION__);
-                    dispatch($job->onQueue('collect'));
+                    $class_name = '\App\Jobs\book\\'.'job_'.__FUNCTION__.'_chapter';
+                    dispatch(new $class_name($v, $zhangjie_number))->onQueue('collect');
+
+                    $cat_count++;
+                    $success_count++;
+                }
+            }
+        }
+    }
+
+    /**
+     * 88读书网, 每个网站采集规则不可, 独立事件
+     * 1.读取待采集栏目页面所有指定链接
+     * 2.对链接进行补全，得到完整链接
+     * 3.将该链接放入数据库中查询,判断是否存在记录
+     * @param $data
+     * @throws \Throwable
+     */
+    public function dushu88($data)
+    {
+        $config_book        = config('book.'.__FUNCTION__); //获取采集配置
+        $base_url           = $config_book['base_url'];
+        $charset            = $config_book['charset'];//编码
+        $category_map       = $config_book['category'];//该站分类对应
+        $list_rules         = $config_book['list']; //列表页配置
+        $number             = $data['number'] ?? 10;
+        $number             = $number < 1 ? 10 : $number;
+        $zhangjie_number    = $data['zhangjie_number'] ?? 0; //获取章节数量
+
+        $cat_ids            = [];
+        if (empty($data['cat_id'])){ //获取小说分类
+            $rows = $this->repo_category->get_list([
+                'pid'       => '0',
+            ]);
+            $cat_ids = $this->serv_array->sql_in($rows, 'id');
+        }
+        else {
+            $cat_ids = $data['cat_id'];
+        }
+
+        $success_count = 0; //成功入库条数
+        foreach ($cat_ids as $cat_id)
+        {
+            $collect_cat = $category_map[$cat_id];
+            $total_page = ceil($number / $list_rules['page_size']);//需要采集的总页数
+
+            $cat_count = 0;
+            for ($page = 1; $page <= $total_page; $page++)
+            {
+                $url = $base_url.sprintf($list_rules['page_url'], $collect_cat, $page); //组装第几页地址
+                //采集数据
+                $res = $this->serv_util->collect([
+                    'url'   => $url,
+                    'rules' => $list_rules['rules'],
+                    'range' => $list_rules['range'],
+                ]);
+
+                //过滤标题与链接为空的无效数据
+                $result = array_filter($res, function($v) {
+                    if (!empty($v['title']) && !empty($v['from_url'])){
+                        return true;
+                    }
+                });
+
+                if ($page == $total_page) {
+                    $result = array_slice($result, 0, $number - $cat_count);//最后一页截取指定剩余数量
+                }
+
+                //小说列表
+                foreach($result as &$v)
+                {
+                    $v = array_map('trim', $v); //移除所有字段空格
+
+                    if ($cat_count >= $number){ //当前分类已采集完毕
+                        break;
+                    }
+
+                    //组装列表页完整链接
+                    if (substr($v['from_url'], 0, 4) !== 'http') {
+                        $v['from_url'] = $base_url.substr($v['from_url'], 1);
+                    }
+
+                    $row = $this->repo_book->find(['where' => [['from_hash', '=', md5($v['from_url'])]]]);
+                    if($row)
+                    {
+                        $v = $row->toArray(); //推送任务到队列
+                    }
+                    else
+                    {
+                        //来源地址hash不在存则入库
+                        $v = [
+                            'do'            => 'add',
+                            'cat_id'        => $cat_id,
+                            'title'         => $v['title'],
+                            'introduce'     => $v['introduce'] ?? '',
+                            'thumb'         => $v['thumb'] ?? '',
+                            'zhangjie'      => $v['zhangjie'] ?? '', //最新章节
+                            'author'        => $v['author'] ?? '',
+                            'word_count'    => 0,
+                            'follow'        => 0,
+                            'hit'           => 0,
+                            'status'        => mod_book::ENABLE,
+                            'source'        => __FUNCTION__,
+                            'from_url'      => $v['from_url'],
+                            'from_hash'     => md5($v['from_url']),
+                        ];
+                        $this->repo_book->save($v, $ret_data);
+                        $v['id'] = $ret_data['id'];
+                        unset($v['do']); //干掉不需要字段
+                    }
+
+                    //推送任务到队列, 1个小说1个任务
+                    $class_name = '\App\Jobs\book\\'.'job_'.__FUNCTION__.'_chapter';
+                    dispatch(new $class_name($v, $zhangjie_number))->onQueue('collect');
 
                     $cat_count++;
                     $success_count++;
