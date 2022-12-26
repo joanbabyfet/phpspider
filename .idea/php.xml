@@ -147,6 +147,14 @@
       <path value="$PROJECT_DIR$/vendor/jaeger/querylist-ext-aquery" />
       <path value="$PROJECT_DIR$/vendor/jaeger/querylist" />
       <path value="$PROJECT_DIR$/vendor/jaeger/querylist-ext-login" />
+      <path value="$PROJECT_DIR$/vendor/google/common-protos" />
+      <path value="$PROJECT_DIR$/vendor/google/auth" />
+      <path value="$PROJECT_DIR$/vendor/google/gax" />
+      <path value="$PROJECT_DIR$/vendor/google/grpc-gcp" />
+      <path value="$PROJECT_DIR$/vendor/google/cloud-translate" />
+      <path value="$PROJECT_DIR$/vendor/google/cloud-core" />
+      <path value="$PROJECT_DIR$/vendor/google/longrunning" />
+      <path value="$PROJECT_DIR$/vendor/rize/uri-template" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="7.3" />

@@ -2,7 +2,6 @@
 
 namespace App\Jobs\book;
 
-use App\lib\response;
 use App\repositories\repo_book;
 use App\repositories\repo_book_detail;
 use App\services\serv_util;
@@ -12,7 +11,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use QL\QueryList;
 
 /**
  * 1.将远程图片下载至本地
@@ -144,6 +142,7 @@ class job_wx999_chapter implements ShouldQueue
                 if(is_array($zhangjie) && isset($zhangjie['title'])){
                     $update_data['zhangjie'] = $zhangjie['title'];
                 }
+
                 //更新小说信息
                 $data = array_merge($update_data, [
                     'do'    => 'edit',

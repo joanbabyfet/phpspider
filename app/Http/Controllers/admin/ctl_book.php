@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\book\job_dushu88_chapter;
-use App\Jobs\book\job_wx999_chapter;
 use App\Models\mod_book;
 use App\repositories\repo_book;
 use App\repositories\repo_book_content;
@@ -14,7 +12,6 @@ use App\services\serv_array;
 use App\services\serv_util;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use QL\QueryList;
 
 class ctl_book extends Controller
 {
@@ -182,6 +179,13 @@ class ctl_book extends Controller
     {
         $data   = $request->all();
         $source = $data['source'];
+        $source_list = array_keys(config('book.source'));
+
+        if(!in_array($source, $source_list) || empty($source))
+        {
+            return res_error(trans('api.api_param_error'), -1);
+        }
+
         return $this->$source($data);
     }
 
