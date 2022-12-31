@@ -18,6 +18,7 @@ Route::get('ping', 'ctl_common@ping')->name('admin.common.ping');
 Route::get('ip', 'ctl_common@ip')->name('admin.common.ip');
 Route::get('get_captcha', 'ctl_common@get_captcha')->name('admin.common.get_captcha');
 Route::get('reload_captcha', 'ctl_common@reload_captcha')->name('admin.common.reload_captcha');
+Route::post('translate', 'ctl_common@translate')->name('admin.common.translate');
 
 Route::group(['middleware' => ['ip_filter']], function() {
     Route::post('login', 'ctl_index@login')->name('admin.index.login');

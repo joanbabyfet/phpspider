@@ -214,4 +214,18 @@ class serv_upload
         }
         return [$status, $filename, $filelink];
     }
+
+    /**
+     * 上传文件到s3
+     * @param $file
+     * @param string $key
+     * @return bool
+     */
+    public function upload2s3($file)
+    {
+        $upload_dir = storage_path('app/public/').'image/';
+        $content = file_get_contents($upload_dir.$file); //从本地拿图片
+        $status = Storage::disk('s3')->put($file, $content);
+        return $status;
+    }
 }

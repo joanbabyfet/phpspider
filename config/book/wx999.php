@@ -1,4 +1,5 @@
 <?php
+//采集规则配置
 return [
     'base_url'  => 'http://www.999wx.cc/',
     'charset'   => 'UTF-8', //输入编码格式(暂未使用)
@@ -22,7 +23,7 @@ return [
                 '.w100 a', 'href'
             ],
             'author'        => [
-                '.w100 .li_bottom a', 'text'
+                '.w100 .li_bottom i', 'text'
             ],
             'update_time'   => [
                 '.w100 .li_bottom .blue', 'text'
@@ -56,7 +57,7 @@ return [
         'range'     => '',  //区域选择器
         'rules'     => [    //规则
             'content'       => [ //过滤div和p标签
-                '.content', 'html'
+                '.content', 'html', '-script'
             ],
         ],
     ]

@@ -2,7 +2,6 @@
 
 namespace App\Jobs\book;
 
-use App\lib\response;
 use App\Models\mod_book_detail;
 use App\repositories\repo_book_content;
 use App\repositories\repo_book_detail;
@@ -14,15 +13,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use QL\QueryList;
 
-/**
- * 1.添加小说章节
- * 2.保存章节内容到txt
- * Class job_wx999_content
- * @package App\Jobs\book
- */
-class job_wx999_content implements ShouldQueue
+class job_dushu88_content implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -60,7 +52,6 @@ class job_wx999_content implements ShouldQueue
             'rules' => $zhangjie_detail_rules['rules'],
             'range' => $zhangjie_detail_rules['range'],
         ]);
-
         $res = array_shift($res); //将第1个数组元素弹出
         $content = empty($res) ? '' : $res['content'];
 
@@ -83,7 +74,7 @@ class job_wx999_content implements ShouldQueue
                 'do'            => 'add',
                 'zhangjie_id'   => $ret_data['id'],
                 //將HTML幾個特殊字元跳脫成HTML Entity(格式：&xxxx;)格式
-                'content'       => $serv_util->htmlentities($content)
+                'content'       => $serv_util->htmlentities($content),
             ];
             $repo_book_content->save($insert_content);
             //保存章节内容到txt文件, 内容干掉html/xml/php标签

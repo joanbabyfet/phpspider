@@ -78,7 +78,7 @@ return [
         'app_key' => '', //app key
     ],
     //翻译 key
-    'translate_key' => '',
+    'translate_key' => env('TRANSLATE_KEY'),
     //短信 every8d
     'every8d' => [
         'username'  => '',
