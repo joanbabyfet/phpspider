@@ -172,7 +172,8 @@ class repo_book_detail
         //檢測目錄是否存在,不存在則創建
         app(serv_util::class)->path_exists($upload_dir);
         //保存到本地
-        return Storage::disk('local')->put($upload_dir."{$id}.txt", $content);
+        $status = Storage::disk('local')->put($upload_dir."{$id}.txt", $content);
+        return $status;
     }
 
     /**

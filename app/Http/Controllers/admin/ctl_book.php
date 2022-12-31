@@ -3,16 +3,15 @@
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\book\job_wx999_chapter;
 use App\Models\mod_book;
 use App\repositories\repo_book;
 use App\repositories\repo_book_content;
 use App\repositories\repo_book_detail;
 use App\repositories\repo_category;
 use App\services\serv_array;
+use App\services\serv_util;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use QL\QueryList;
 
 class ctl_book extends Controller
 {
@@ -21,13 +20,15 @@ class ctl_book extends Controller
     private $repo_book_detail;
     private $repo_book_content;
     private $serv_array;
+    private $serv_util;
 
     public function __construct(
         repo_category $repo_category,
         repo_book $repo_book,
         repo_book_detail $repo_book_detail,
         repo_book_content $repo_book_content,
-        serv_array $serv_array
+        serv_array $serv_array,
+        serv_util $serv_util
     )
     {
         parent::__construct();
@@ -36,6 +37,7 @@ class ctl_book extends Controller
         $this->repo_book_detail = $repo_book_detail;
         $this->repo_book_content = $repo_book_content;
         $this->serv_array       = $serv_array;
+        $this->serv_util        = $serv_util;
     }
 
     /**
@@ -94,7 +96,7 @@ class ctl_book extends Controller
         }
 
         $content = $this->repo_book_detail->get_content($pid, $id);
-        return res_success(['content' => $content]);
+        return res_success(['content' => htmlspecialchars_decode($content)]);
     }
 
     /**
@@ -177,6 +179,13 @@ class ctl_book extends Controller
     {
         $data   = $request->all();
         $source = $data['source'];
+        $source_list = array_keys(config('book.source'));
+
+        if(!in_array($source, $source_list) || empty($source))
+        {
+            return res_error(trans('api.api_param_error'), -1);
+        }
+
         return $this->$source($data);
     }
 
@@ -198,8 +207,6 @@ class ctl_book extends Controller
         $number             = $number < 1 ? 10 : $number; //小说数量
         $zhangjie_number    = $request->input('zhangjie_number', 0); //章节数量
         $zhangjie_number    = $zhangjie_number < 1 ? 50 : $zhangjie_number;
-        $config_book        = config('book.wx999'); //获取采集配置
-        $zhangjie_detail_rules  = $config_book['zhangjie_detail']; //列表页配置
 
         if($type == 1) { //指定分类
             $conds = [
@@ -233,19 +240,30 @@ class ctl_book extends Controller
                 'order_by'  => ['zhangjie_id', 'asc'],
             ];
             $rows = $this->repo_book_content->get_list($conds);
-            $ids = sql_in($rows, 'zhangjie_id');
+            $zhangjie_ids = sql_in($rows, 'zhangjie_id');
 
             //获取小说章节列表
-            $zhangjie_list = $this->repo_book_detail->get_list(['id'  => $ids]);
+            $zhangjie_list = $this->repo_book_detail->get_list(['id'  => $zhangjie_ids]);
+            $book_ids = sql_in($zhangjie_list, 'pid');
+
+            //获取小说来源 source
+            $books = $this->repo_book->get_list(['id'  => $book_ids]);
+            $book_source = one_array($books, ['id', 'source']);
+
             $success_zhangjie_count = 0; //成功章节内容入库条数
             foreach ($zhangjie_list as $v)
             {
-                //获取该页面html源码
-                $html = file_get_contents($v['from_url']);
-                $res = QueryList::Query($html, $zhangjie_detail_rules['rules'], $zhangjie_detail_rules['range'])->getData(function($item){
-                    return $item;
-                });
+                $config_book            = config('book.'.$book_source[$v['pid']]); //根据小说id获取采集配置
+                $zhangjie_detail_rules  = $config_book['zhangjie_detail']; //列表页配置
+
+                //采集数据
+                $res = $this->serv_util->collect([
+                    'url'   => $v['from_url'],
+                    'rules' => $zhangjie_detail_rules['rules'],
+                    'range' => $zhangjie_detail_rules['range'],
+                ]);
                 $res = array_shift($res); //将第1个数组元素弹出
+
                 if(!empty($res['content']))
                 {
                     //更新章节内容
@@ -289,7 +307,7 @@ class ctl_book extends Controller
     }
 
     /**
-     * 999小说源
+     * 999小说, 每个网站采集规则不可, 独立事件
      * 1.读取待采集栏目页面所有指定链接
      * 2.对链接进行补全，得到完整链接
      * 3.将该链接放入数据库中查询,判断是否存在记录
@@ -328,11 +346,12 @@ class ctl_book extends Controller
             for ($page = 1; $page <= $total_page; $page++)
             {
                 $url = $base_url.sprintf($list_rules['page_url'], $collect_cat, $page); //组装第几页地址
-                //获取该页面html源码
-                $html = file_get_contents($url);
-                $res = QueryList::Query($html, $list_rules['rules'], $list_rules['range'])->getData(function($item){
-                    return $item;
-                });
+                //采集数据
+                $res = $this->serv_util->collect([
+                    'url'   => $url,
+                    'rules' => $list_rules['rules'],
+                    'range' => $list_rules['range'],
+                ]);
 
                 //过滤标题与链接为空的无效数据
                 $result = array_filter($res, function($v) {
@@ -389,8 +408,120 @@ class ctl_book extends Controller
                     }
 
                     //推送任务到队列, 1个小说1个任务
-                    $job = new job_wx999_chapter($v, $zhangjie_number, __FUNCTION__);
-                    dispatch($job->onQueue('collect'));
+                    $class_name = '\App\Jobs\book\\'.'job_'.__FUNCTION__.'_chapter';
+                    dispatch(new $class_name($v, $zhangjie_number))->onQueue('collect');
+
+                    $cat_count++;
+                    $success_count++;
+                }
+            }
+        }
+    }
+
+    /**
+     * 88读书网, 每个网站采集规则不可, 独立事件
+     * 1.读取待采集栏目页面所有指定链接
+     * 2.对链接进行补全，得到完整链接
+     * 3.将该链接放入数据库中查询,判断是否存在记录
+     * @param $data
+     * @throws \Throwable
+     */
+    public function dushu88($data)
+    {
+        $config_book        = config('book.'.__FUNCTION__); //获取采集配置
+        $base_url           = $config_book['base_url'];
+        $charset            = $config_book['charset'];//编码
+        $category_map       = $config_book['category'];//该站分类对应
+        $list_rules         = $config_book['list']; //列表页配置
+        $number             = $data['number'] ?? 10;
+        $number             = $number < 1 ? 10 : $number;
+        $zhangjie_number    = $data['zhangjie_number'] ?? 0; //获取章节数量
+
+        $cat_ids            = [];
+        if (empty($data['cat_id'])){ //获取小说分类
+            $rows = $this->repo_category->get_list([
+                'pid'       => '0',
+            ]);
+            $cat_ids = $this->serv_array->sql_in($rows, 'id');
+        }
+        else {
+            $cat_ids = $data['cat_id'];
+        }
+
+        $success_count = 0; //成功入库条数
+        foreach ($cat_ids as $cat_id)
+        {
+            $collect_cat = $category_map[$cat_id];
+            $total_page = ceil($number / $list_rules['page_size']);//需要采集的总页数
+
+            $cat_count = 0;
+            for ($page = 1; $page <= $total_page; $page++)
+            {
+                $url = $base_url.sprintf($list_rules['page_url'], $collect_cat, $page); //组装第几页地址
+                //采集数据
+                $res = $this->serv_util->collect([
+                    'url'   => $url,
+                    'rules' => $list_rules['rules'],
+                    'range' => $list_rules['range'],
+                ]);
+
+                //过滤标题与链接为空的无效数据
+                $result = array_filter($res, function($v) {
+                    if (!empty($v['title']) && !empty($v['from_url'])){
+                        return true;
+                    }
+                });
+
+                if ($page == $total_page) {
+                    $result = array_slice($result, 0, $number - $cat_count);//最后一页截取指定剩余数量
+                }
+
+                //小说列表
+                foreach($result as &$v)
+                {
+                    $v = array_map('trim', $v); //移除所有字段空格
+
+                    if ($cat_count >= $number){ //当前分类已采集完毕
+                        break;
+                    }
+
+                    //组装列表页完整链接
+                    if (substr($v['from_url'], 0, 4) !== 'http') {
+                        $v['from_url'] = $base_url.substr($v['from_url'], 1);
+                    }
+
+                    $row = $this->repo_book->find(['where' => [['from_hash', '=', md5($v['from_url'])]]]);
+                    if($row)
+                    {
+                        $v = $row->toArray(); //推送任务到队列
+                    }
+                    else
+                    {
+                        //来源地址hash不在存则入库
+                        $v = [
+                            'do'            => 'add',
+                            'cat_id'        => $cat_id,
+                            'title'         => $v['title'],
+                            'introduce'     => $v['introduce'] ?? '',
+                            'thumb'         => $v['thumb'] ?? '',
+                            'zhangjie'      => $v['zhangjie'] ?? '', //最新章节
+                            'author'        => $v['author'] ?? '',
+                            'word_count'    => 0,
+                            'follow'        => 0,
+                            'hit'           => 0,
+                            'status'        => mod_book::ENABLE,
+                            'source'        => __FUNCTION__,
+                            'from_url'      => $v['from_url'],
+                            'from_hash'     => md5($v['from_url']),
+                        ];
+                        $this->repo_book->save($v, $ret_data);
+                        $v['id'] = $ret_data['id'];
+                        unset($v['do']); //干掉不需要字段
+                    }
+
+                    //推送任务到队列, 1个小说1个任务
+                    $class_name = '\App\Jobs\book\\'.'job_'.__FUNCTION__.'_chapter';
+                    dispatch(new $class_name($v, $zhangjie_number))->onQueue('collect');
 
                     $cat_count++;
                     $success_count++;

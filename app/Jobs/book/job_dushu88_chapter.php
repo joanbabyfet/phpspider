@@ -18,10 +18,10 @@ use Illuminate\Support\Facades\Storage;
  * 1.将远程图片下载至本地
  * 2.更新小说信息, 包含简介/缩图
  * 3.推送任务到队列(采集每章节内容), 1个章节1个任务
- * Class job_wx999_chapter
+ * Class job_dushu88_chapter
  * @package App\Jobs\book
  */
-class job_wx999_chapter implements ShouldQueue
+class job_dushu88_chapter implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -42,12 +42,7 @@ class job_wx999_chapter implements ShouldQueue
     /**
      * Execute the job.
      *
-     * @param repo_book $repo_book
-     * @param repo_book_detail $repo_book_detail
-     * @param serv_util $serv_util
-     * @param serv_upload $serv_upload
-     * @return bool
-     * @throws \Throwable
+     * @return void
      */
     public function handle(
         repo_book $repo_book,
@@ -163,7 +158,6 @@ class job_wx999_chapter implements ShouldQueue
                 if(is_array($zhangjie) && isset($zhangjie['title'])){
                     $update_data['zhangjie'] = $zhangjie['title'];
                 }
-
                 //更新小说信息
                 $data = array_merge($update_data, [
                     'do'    => 'edit',

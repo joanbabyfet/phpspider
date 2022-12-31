@@ -82,4 +82,25 @@ trait trait_ctl_common
         $options = $this->serv_array->one_array($rows, ['id', 'name']);
         return res_success($options);
     }
+
+    /**
+     * 翻译
+     * @param Request $request
+     * @return mixed
+     */
+    public function translate(Request $request)
+    {
+        $content    = $request->input('content', '');
+        $out_lang   = $request->input('out_lang', 'zh-TW');
+
+        $status = app(serv_util::class)->translate([
+            'content'   => $content,
+            'out_lang'  => $out_lang,
+        ], $ret_data);
+        if($status < 0)
+        {
+            return res_error(app(serv_util::class)->get_err_msg($status), $status);
+        }
+        return res_success($ret_data);
+    }
 }
