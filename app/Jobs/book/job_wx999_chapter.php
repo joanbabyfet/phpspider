@@ -4,6 +4,7 @@ namespace App\Jobs\book;
 
 use App\repositories\repo_book;
 use App\repositories\repo_book_detail;
+use App\services\serv_upload;
 use App\services\serv_util;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -11,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * 1.将远程图片下载至本地
@@ -40,12 +42,18 @@ class job_wx999_chapter implements ShouldQueue
     /**
      * Execute the job.
      *
-     * @return void
+     * @param repo_book $repo_book
+     * @param repo_book_detail $repo_book_detail
+     * @param serv_util $serv_util
+     * @param serv_upload $serv_upload
+     * @return bool
+     * @throws \Throwable
      */
     public function handle(
         repo_book $repo_book,
         repo_book_detail $repo_book_detail,
-        serv_util $serv_util
+        serv_util $serv_util,
+        serv_upload $serv_upload
     )
     {
         $source                 = $this->book['source'] ?? ''; //来源网站
@@ -86,11 +94,24 @@ class job_wx999_chapter implements ShouldQueue
                 {
                     //将远程图片下载至本地
                     $thumb = $serv_util->get_remote_image($info[0]['thumb']);
-                    if($thumb){
-                        if(config('app.debug') == false){
-                            //TODO 上传到云存储 例s3
+                    if($thumb)
+                    {
+                        $s3_thumb = false;
+                        if(config('app.debug') == false)
+                        {
+                            //上传到s3
+                            $s3_thumb = $serv_upload->upload2s3($thumb);
+                        }
+
+                        if($s3_thumb)
+                        {
                             $update_data['thumb'] = $thumb;
-                        }else{
+                            //干掉本地图片
+                            $upload_dir = 'public/image/'; //这里不能用绝对路径
+                            Storage::disk('local')->delete($upload_dir.$thumb);
+                        }
+                        else
+                        {
                             $update_data['thumb'] = $thumb;
                         }
                     }

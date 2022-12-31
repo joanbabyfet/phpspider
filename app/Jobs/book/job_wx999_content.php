@@ -82,11 +82,12 @@ class job_wx999_content implements ShouldQueue
             $insert_content = [
                 'do'            => 'add',
                 'zhangjie_id'   => $ret_data['id'],
-                'content'       => $content,
+                //將HTML幾個特殊字元跳脫成HTML Entity(格式：&xxxx;)格式
+                'content'       => $serv_util->htmlentities($content)
             ];
             $repo_book_content->save($insert_content);
-            //保存章节内容到txt, 内容干掉php/html/xml标签
-            $content = strip_tags($content);
+            //保存章节内容到txt文件, 内容干掉html/xml/php标签
+            $content = strip_tags($content, '<br><br/><br />');
             //$serv_util->translate(['content' => $content], $ret_data);
             //$content = $ret_data['content']; //简体转繁体
             $content and $repo_book_detail->set_content($this->info['pid'], $ret_data['id'], $content);

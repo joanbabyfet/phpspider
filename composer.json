@@ -35,7 +35,8 @@
         "jaeger/querylist-ext-request": "^1.0",
         "jaeger/querylist-ext-multi": "^1.0",
         "jaeger/querylist-ext-login": "^1.0",
-        "google/cloud-translate": "^1.10"
+        "google/cloud-translate": "^1.10",
+        "league/flysystem-aws-s3-v3": "^1.0"
     },
     "require-dev": {
         "facade/ignition": "^2.3.6",

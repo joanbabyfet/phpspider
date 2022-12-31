@@ -96,7 +96,7 @@ class ctl_book extends Controller
         }
 
         $content = $this->repo_book_detail->get_content($pid, $id);
-        return res_success(['content' => $content]);
+        return res_success(['content' => htmlspecialchars_decode($content)]);
     }
 
     /**

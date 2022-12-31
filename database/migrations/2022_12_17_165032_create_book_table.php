@@ -18,7 +18,7 @@ class CreateBookTable extends Migration
             $table->Increments('id');
             $table->integer('cat_id')->default(0)->nullable()->comment('分类id');
             $table->string('title',255)->default('')->nullable()->comment('标题');
-            $table->string('introduce',255)->default('')->nullable()->comment('简介');
+            $table->string('introduce',500)->default('')->nullable()->comment('简介');
             $table->string('thumb',100)->default('')->nullable()->comment('标题图片');
             $table->string('zhangjie',50)->default('')->nullable()->comment('章节');
             $table->string('author',50)->default('')->nullable()->comment('作者');

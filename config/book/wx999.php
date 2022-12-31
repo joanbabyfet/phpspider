@@ -57,7 +57,7 @@ return [
         'range'     => '',  //区域选择器
         'rules'     => [    //规则
             'content'       => [ //过滤div和p标签
-                '.content', 'html'
+                '.content', 'html', '-script'
             ],
         ],
     ]
